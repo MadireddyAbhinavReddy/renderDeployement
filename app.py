@@ -12,6 +12,23 @@ def root():
     html_path = Path(__file__).parent / "templates" / "index.html"
     return html_path.read_text()
 
+@app.get("/api")
+def api_info():
+    return {
+        "message": "Free LLM Chatbot API with Auto-Failover",
+        "status": "running",
+        "models": {
+            "primary": "Gemini 2.5 Flash",
+            "backups": ["Gemini 3.8 Flash", "Gemini 3.6 Flash", "Gemini 4 Hydrogen"]
+        },
+        "endpoints": {
+            "GET /": "Chat UI",
+            "POST /chat": "Send a message (auto-failover)",
+            "GET /health": "Health check",
+            "GET /api": "API info"
+        }
+    }
+
 @app.post("/chat")
 def chat(request: dict):
     message = request.get("message", "")
@@ -29,7 +46,13 @@ def chat(request: dict):
             "model": "error"
         }
     
-    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+    # Backup models in priority order
+    models = [
+        "gemini-2.5-flash",
+        "gemini-3.8-flash", 
+        "gemini-3.6-flash",
+        "gemini-4-hydrogen"
+    ]
     
     payload = {
         "contents": [{
@@ -43,37 +66,42 @@ def chat(request: dict):
         }
     }
     
-    try:
-        response = requests.post(api_url, json=payload, timeout=30)
-        
-        if response.status_code != 200:
-            return {
-                "response": f"API Error: {response.status_code} - {response.text[:200]}",
-                "model": "error"
-            }
-        
-        result = response.json()
-        
-        if "candidates" in result and len(result["candidates"]) > 0:
-            text = result["candidates"][0]["content"]["parts"][0]["text"]
-        else:
-            text = "No response from Gemini"
-        
-        return {
-            "response": text,
-            "model": "gemini-2.5-flash"
-        }
+    last_error = None
     
-    except requests.exceptions.Timeout:
-        return {
-            "response": "Request timed out. Please try again.",
-            "model": "error"
-        }
-    except Exception as e:
-        return {
-            "response": f"Error: {str(e)}",
-            "model": "error"
-        }
+    for model_name in models:
+        try:
+            api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+            response = requests.post(api_url, json=payload, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if "candidates" in result and len(result["candidates"]) > 0:
+                    text = result["candidates"][0]["content"]["parts"][0]["text"]
+                    return {
+                        "response": text,
+                        "model": model_name
+                    }
+            elif response.status_code == 429:
+                # Rate limit hit, try next model
+                last_error = f"{model_name}: Rate limit exceeded"
+                continue
+            else:
+                last_error = f"{model_name}: API Error {response.status_code}"
+                continue
+                
+        except requests.exceptions.Timeout:
+            last_error = f"{model_name}: Timeout"
+            continue
+        except Exception as e:
+            last_error = f"{model_name}: {str(e)}"
+            continue
+    
+    # All models failed
+    return {
+        "response": f"All models failed. Last error: {last_error}",
+        "model": "error"
+    }
 
 @app.get("/health")
 def health():
