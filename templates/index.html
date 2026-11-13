@@ -73,7 +73,7 @@
         .message-content {
             padding: 12px 16px;
             border-radius: 12px;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         .message.user .message-content {
@@ -84,6 +84,61 @@
         .message.assistant .message-content {
             background: #f0f0f0;
             color: #333;
+        }
+
+        /* Markdown formatting in assistant messages */
+        .message.assistant .message-content strong {
+            font-weight: 600;
+            color: #000;
+        }
+
+        .message.assistant .message-content em {
+            font-style: italic;
+        }
+
+        .message.assistant .message-content code {
+            background: #e8e8e8;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .message.assistant .message-content pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+        }
+
+        .message.assistant .message-content pre code {
+            background: transparent;
+            padding: 0;
+            color: #f8f8f2;
+        }
+
+        .message.assistant .message-content ul,
+        .message.assistant .message-content ol {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .message.assistant .message-content li {
+            margin: 4px 0;
+        }
+
+        .message.assistant .message-content p {
+            margin: 8px 0;
+        }
+
+        .message.assistant .message-content p:first-child {
+            margin-top: 0;
+        }
+
+        .message.assistant .message-content p:last-child {
+            margin-bottom: 0;
         }
 
         .input-area {
@@ -203,12 +258,19 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         const chatArea = document.getElementById('chatArea');
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
         const loading = document.getElementById('loading');
         let firstMessage = true;
+
+        // Configure marked for better formatting
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
 
         function addMessage(content, isUser) {
             if (firstMessage) {
@@ -221,7 +283,13 @@
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
-            contentDiv.textContent = content;
+            
+            if (isUser) {
+                contentDiv.textContent = content;
+            } else {
+                // Render markdown for assistant messages
+                contentDiv.innerHTML = marked.parse(content);
+            }
             
             messageDiv.appendChild(contentDiv);
             chatArea.appendChild(messageDiv);
