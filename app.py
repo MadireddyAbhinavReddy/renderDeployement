@@ -1,14 +1,15 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 import requests
 import os
 
-app = FastAPI(title="Free LLM Chatbot")
+app = FastAPI(title="Free LLM Chatbot with Gemini")
 
 @app.get("/")
 def root():
     return {
         "message": "Free LLM Chatbot API",
         "status": "running",
+        "model": "Google Gemini 1.5 Flash",
         "endpoints": {
             "POST /chat": "Send a message",
             "GET /health": "Health check"
@@ -18,34 +19,36 @@ def root():
 @app.post("/chat")
 def chat(request: dict):
     message = request.get("message", "")
-    hf_token = os.getenv("HF_TOKEN", "")
+    gemini_key = os.getenv("GEMINI_API_KEY", "")
     
-    if not hf_token:
+    if not gemini_key:
         return {
-            "response": "Please set HF_TOKEN environment variable",
+            "response": "Please set GEMINI_API_KEY environment variable",
             "model": "error"
         }
     
-    api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct"
-    headers = {"Authorization": f"Bearer {hf_token}"}
+    if not message:
+        return {
+            "response": "Please provide a message",
+            "model": "error"
+        }
+    
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
     
     payload = {
-        "inputs": message,
-        "parameters": {
-            "max_new_tokens": 200,
+        "contents": [{
+            "parts": [{
+                "text": message
+            }]
+        }],
+        "generationConfig": {
             "temperature": 0.7,
-            "return_full_text": False
+            "maxOutputTokens": 200
         }
     }
     
     try:
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
-        
-        if response.status_code == 503:
-            return {
-                "response": "Model is loading, try again in 20 seconds",
-                "model": "llama-3.2-3b"
-            }
+        response = requests.post(api_url, json=payload, timeout=30)
         
         if response.status_code != 200:
             return {
@@ -55,14 +58,14 @@ def chat(request: dict):
         
         result = response.json()
         
-        if isinstance(result, list) and len(result) > 0:
-            text = result[0].get("generated_text", "No response")
+        if "candidates" in result and len(result["candidates"]) > 0:
+            text = result["candidates"][0]["content"]["parts"][0]["text"]
         else:
-            text = str(result)
+            text = "No response from Gemini"
         
         return {
             "response": text,
-            "model": "llama-3.2-3b"
+            "model": "gemini-1.5-flash"
         }
     
     except requests.exceptions.Timeout:
