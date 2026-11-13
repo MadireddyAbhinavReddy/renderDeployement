@@ -19,7 +19,14 @@ def api_info():
         "status": "running",
         "models": {
             "primary": "Gemini 2.5 Flash",
-            "backups": ["Gemini 3.8 Flash", "Gemini 3.6 Flash", "Gemini 4 Hydrogen"]
+            "backups": [
+                "Gemini 3.8 Flash",
+                "Gemini 3.6 Flash", 
+                "Gemini 3 Flash",
+                "Gemini 4 Hydrogen",
+                "Gemini 2.5 Flash Lite",
+                "Gemini 3.1 Flash Lite"
+            ]
         },
         "endpoints": {
             "GET /": "Chat UI",
@@ -46,12 +53,15 @@ def chat(request: dict):
             "model": "error"
         }
     
-    # Backup models in priority order
+    # Backup models in priority order (7 models for maximum reliability)
     models = [
-        "gemini-2.5-flash",
-        "gemini-3.8-flash", 
-        "gemini-3.6-flash",
-        "gemini-4-hydrogen"
+        "gemini-2.5-flash",      # Primary - Best quality
+        "gemini-3.8-flash",      # Backup 1
+        "gemini-3.6-flash",      # Backup 2
+        "gemini-3-flash",        # Backup 3
+        "gemini-4-hydrogen",     # Backup 4
+        "gemini-2.5-flash-lite", # Backup 5 - Lite but fast
+        "gemini-3.1-flash-lite"  # Backup 6 - Last resort
     ]
     
     payload = {
