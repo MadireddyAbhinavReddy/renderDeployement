@@ -9,7 +9,7 @@ def root():
     return {
         "message": "Free LLM Chatbot API",
         "status": "running",
-        "model": "Google Gemini 2.0 Flash",
+        "model": "Google Gemini 2.5 Flash",
         "endpoints": {
             "POST /chat": "Send a message",
             "GET /health": "Health check"
@@ -33,7 +33,7 @@ def chat(request: dict):
             "model": "error"
         }
     
-    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={gemini_key}"
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
     
     payload = {
         "contents": [{
@@ -65,7 +65,7 @@ def chat(request: dict):
         
         return {
             "response": text,
-            "model": "gemini-2.0-flash-exp"
+            "model": "gemini-2.5-flash"
         }
     
     except requests.exceptions.Timeout:
