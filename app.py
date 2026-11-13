@@ -1,20 +1,16 @@
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import requests
 import os
+from pathlib import Path
 
 app = FastAPI(title="Free LLM Chatbot with Gemini")
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def root():
-    return {
-        "message": "Free LLM Chatbot API",
-        "status": "running",
-        "model": "Google Gemini 2.5 Flash",
-        "endpoints": {
-            "POST /chat": "Send a message",
-            "GET /health": "Health check"
-        }
-    }
+    html_path = Path(__file__).parent / "templates" / "index.html"
+    return html_path.read_text()
 
 @app.post("/chat")
 def chat(request: dict):
