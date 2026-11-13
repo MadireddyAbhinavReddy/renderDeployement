@@ -72,7 +72,7 @@ def chat(request: dict):
         }],
         "generationConfig": {
             "temperature": 0.7,
-            "maxOutputTokens": 200
+            "maxOutputTokens": 1000
         }
     }
     
