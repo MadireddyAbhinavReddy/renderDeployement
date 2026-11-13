@@ -1,26 +1,8 @@
 from fastapi import FastAPI, HTTPException
-import httpx
+import requests
 import os
-import asyncio
 
 app = FastAPI(title="Free LLM Chatbot")
-
-async def call_hf_api(message: str, token: str):
-    api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct"
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    payload = {
-        "inputs": message,
-        "parameters": {
-            "max_new_tokens": 200,
-            "temperature": 0.7,
-            "return_full_text": False
-        }
-    }
-    
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-        response = await client.post(api_url, headers=headers, json=payload)
-        return response
 
 @app.get("/")
 def root():
@@ -34,7 +16,7 @@ def root():
     }
 
 @app.post("/chat")
-async def chat(request: dict):
+def chat(request: dict):
     message = request.get("message", "")
     hf_token = os.getenv("HF_TOKEN", "")
     
@@ -44,8 +26,20 @@ async def chat(request: dict):
             "model": "error"
         }
     
+    api_url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct"
+    headers = {"Authorization": f"Bearer {hf_token}"}
+    
+    payload = {
+        "inputs": message,
+        "parameters": {
+            "max_new_tokens": 200,
+            "temperature": 0.7,
+            "return_full_text": False
+        }
+    }
+    
     try:
-        response = await call_hf_api(message, hf_token)
+        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
         
         if response.status_code == 503:
             return {
@@ -71,7 +65,7 @@ async def chat(request: dict):
             "model": "llama-3.2-3b"
         }
     
-    except httpx.TimeoutException:
+    except requests.exceptions.Timeout:
         return {
             "response": "Request timed out. Please try again.",
             "model": "error"
